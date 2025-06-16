@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Cloud Data Pipeline</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js" />
+  <style>
+    body {
+      font-family: 'Times New Roman', Times, serif;
+      padding: 20px;
+      margin: 0;
+    }
+
+    h1 {
+      color: #215387;
+      font-size: 24px;
+    }
+
+    .btn-group {
+      margin: 10px 0;
+    }
+
+    button {
+      background-color: #21c359;
+      border: none;
+      padding: 10px 15px;
+      color: white;
+      cursor: pointer;
+      margin-right: 8px;
+      margin-bottom: 8px;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    button:hover {
+      background-color: #0f4256;
+    }
+
+    input[type="file"] {
+      margin-top: 10px;
+      margin-bottom: 10px;
+    }
+
+    #stepsList {
+      list-style: none;
+      padding: 0;
+      background: #fff;
+      border: 2px dashed #aaa;
+      min-height: 100px;
+      padding: 10px;
+      border-radius: 6px;
+      transition: background 0.3s;
+    }
+
+    #stepsList.dragging {
+      background-color: #e7f3ff;
+    }
+
+    #stepsList li {
+      padding: 8px 12px;
+      margin-bottom: 6px;
+      background: #f0f0f0;
+      border-radius: 4px;
+      cursor: move;
+    }
+
+    pre {
+      background-color: #f8f8f8;
+      padding: 10px;
+      border: 1px solid #ccc;
+      overflow-x: auto;
+      white-space: pre-wrap;
+    }
+
+    @media screen and (max-width: 600px) {
+      body {
+        padding: 10px;
+      }
+
+      h1 {
+        font-size: 20px;
+      }
+
+      button {
+        width: 100%;
+        margin-right: 0;
+      }
+
+      #stepsList li {
+        font-size: 14px;
+      }
+    }
+    .watermark {
+  position: fixed;
+  bottom: 10px;
+  right: 15px;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.2); 
+  pointer-events: none;
+  user-select: none;
+}
+  </style>
+</head>
+<body>
+  <h1>Cloud Data Pipeline Builder</h1>
+  <p>Chọn file CSV và xử lý dữ liệu:</p>
+
+  <input type="file" id="csvFile" accept=".csv" />
+
+  <div class="btn-group">
+    <button onclick="upload()">📤 Upload & Xử lý</button>
+    <button onclick="clearPipeline()">🗑️ Xoá Pipeline</button>
+    <button onclick="savePipeline()">💾 Lưu Pipeline</button>
+  </div>
+
+  <h3>Các bước xử lý (có thể kéo sắp xếp):</h3>
+  <ul id="stepsList"></ul>
+
+  <h3>Kết quả xử lý:</h3>
+  <pre id="output" style="font-family: 'Times New Romand'; font-size: 16px; color: gray;">
+    (Chưa có dữ liệu)
+  </pre>
+  
+  <h3>Pipeline (JSON):</h3>
+  <pre id="savedPipeline"></pre>
+
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script>
+    const stepsList = document.getElementById("stepsList");
+    const pipelineSteps = [];
+
+    new Sortable(stepsList, {
+      animation: 150,
+      onEnd: () => {
+        const items = stepsList.querySelectorAll("li");
+        pipelineSteps.length = 0;
+        items.forEach(item => pipelineSteps.push(item.textContent));
+      },
+      onStart: () => stepsList.classList.add('dragging'),
+      onEnd: () => stepsList.classList.remove('dragging')
+    });
+
+    async function upload() {
+      const fileInput = document.getElementById("csvFile");
+      const file = fileInput.files[0];
+
+      if (!file) {
+        alert("Vui lòng chọn file CSV!");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const stepName = "Xử lý file: " + file.name;
+      addStep(stepName);
+
+      const res = await fetch("http://localhost:5000/upload", {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await res.json();
+      document.getElementById("output").textContent = JSON.stringify(data, null, 2);
+    }
+
+    function addStep(name) {
+      pipelineSteps.push(name);
+
+      const li = document.createElement("li");
+      li.textContent = name;
+      stepsList.appendChild(li);
+    }
+
+    function clearPipeline() {
+      pipelineSteps.length = 0;
+      stepsList.innerHTML = "";
+      document.getElementById("output").textContent = "(Chưa có dữ liệu)";
+      document.getElementById("savedPipeline").textContent = "";
+    }
+
+    function savePipeline() {
+      const json = {
+        steps: pipelineSteps,
+        time: new Date().toISOString()
+      };
+      document.getElementById("savedPipeline").textContent = JSON.stringify(json, null, 2);
+    }
+  </script>
+
+  <div class="watermark">23010408 - Nguyen Minh Nguyet</div>
+
+</body>
+</html>
